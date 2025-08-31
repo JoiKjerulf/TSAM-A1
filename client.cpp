@@ -1,6 +1,7 @@
 
 // All sources
 // https://stackoverflow.com/questions/2797813/how-to-convert-a-command-line-argument-to-int
+// Live coding practice lecture from Stephan Schiffel
 
 
 
