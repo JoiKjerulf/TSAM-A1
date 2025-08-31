@@ -82,12 +82,10 @@ int main(int argc, char const *argv[])
     }
 
 
-    // Here we start message handling to send to the server. I use std::getLine to get the entire line entered by 
-    // the user since later we will add support for options and flags. This also allows the user to enter
-    // either SYS <command> or just <command>
+    // Here we start message handling to send to the server
     std::cout << "Enter command to send to the server: " << std::endl;
     std::string message;
-    std::getline(std::cin, message);
+    std::cin >> message;
 
 
     // I decided to make adding SYS optional on the client side for convenience, this just adds SYS to the input string if 
@@ -109,13 +107,52 @@ int main(int argc, char const *argv[])
     }
 
 
-    // Last thing to do is to explicitly close the connection after we're done
+//  Receive somthing back
+/*
+
+    char buffer[1024];
+
+    int numberOfBytesReceived = recv(mySocket, buffer, sizeof(buffer), 0);
+
+
+    if (numberOfBytesReceived < 0){
+        std::cout << "Failed to receive message" << std::endl;
+        return -1;
+    }
+    else if (numberOfBytesReceived == 0){
+        std::cout << "Failed to receive message because the server closed the connection" << std::endl;
+        return -1;
+    }
+
+    std::cout << "Received from server: " << '\n' << buffer << std::endl;;
+
+ */
+
     if (close(mySocket) <0){
         perror("Failed to close socket");
         return -1;
     }
 
+    // message.c_str() returns a pointer to the array of characters that compose the message string
 
     return 0;
 }
 
+// close socket
+
+
+
+// Use Pull and not select to make a set of sockets
+
+// select blocks on all of the sockets at once instead of just one
+
+
+// We could use read() and write() but we should use send() and receive() instead
+
+
+
+
+
+
+
+//  I need to add receiving something back from the server and printing it out, clean up so that nothing is hardcoded and the arguments are properly checked 
