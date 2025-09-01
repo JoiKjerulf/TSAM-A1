@@ -163,7 +163,31 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   // This assumes that the supplied command has no parameters
   if ((tokens.size() >= 2) && (tokens[0].compare("SYS") == 0))
   {
-    system(tokens[1].c_str());
+    // partially adapted from
+    // https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
+
+    const char* mode = "r"; // "r" for read, "w" for write, and "r+" for both
+    FILE* iostream = popen(buffer + 4, mode);
+    if (!iostream)
+    {
+        std::cerr << "Couldn't start command." << std::endl;
+        exit(-1);
+    }
+
+    char responseBuffer[1024];
+    std::string output;
+    while(fgets(responseBuffer, sizeof(responseBuffer), iostream) != NULL ){
+      output += responseBuffer;
+    }
+
+    pclose(iostream);
+    send(clientSocket, output.c_str(), output.length(), 0);
+
+
+    // system(buffer + 4);
+    // std::string response = "bababooey";
+    // send(clientSocket, response.c_str(), response.length(), 0);
+    // system(tokens[1].c_str());
   }
   else
   {
