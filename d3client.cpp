@@ -1,13 +1,6 @@
 
 // All sources
 // https://stackoverflow.com/questions/2797813/how-to-convert-a-command-line-argument-to-int
-// Live coding practice lecture from Stephan Schiffel
-
-
-
-// Server:
-// https://stackoverflow.com/questions/8538324/what-is-the-difference-between-popen-and-system-in-c
-// https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
 
 
 
@@ -33,6 +26,7 @@ int main(int argc, char const *argv[])
     }
     else if (argc > 3){
         std::cout << "Too many arguments, correct usage is: client <ip address> <port>" << std::endl; 
+        return -1;
     }
 
     
@@ -92,60 +86,31 @@ int main(int argc, char const *argv[])
     // Here we start message handling to send to the server. I use std::getLine to get the entire line entered by 
     // the user since later we will add support for options and flags. This also allows the user to enter
     // either SYS <command> or just <command>
-
-
-
     std::cout << "Enter command to send to the server: " << std::endl;
     std::string message;
     std::getline(std::cin, message);
 
-    while(message != "quit"){
 
-        
-
-        // I decided to make adding SYS optional on the client side for convenience, this just adds SYS to the input string if 
-        // the user did not do so already. This should probably be removed later if the client and server will support doing something
-        // other than just send SYS commands and receive results
-        if ( message.substr(0,3) != "SYS"){
-            message = "SYS " + message;
-        }
-
-
-        // Here we try sending the message and handle things that could have gone wrong
-        int numberOfBytesSent = send(mySocket, message.c_str(), message.length(), 0); // last input are flags, which I don't think are necessary here
-
-        if (numberOfBytesSent == -1){
-            perror("Failed to send message");
-        }
-        else if (numberOfBytesSent < message.length()){
-            std::cout << "Did not send the entire message for some reason" << std::endl;
-        }
-
-
-        //  Receive something back
-        char buffer[1024];
-        int numberOfBytesReceived = recv(mySocket, buffer, sizeof(buffer), 0);
-        if (numberOfBytesReceived < 0){
-            std::cout << "Failed to receive message" << std::endl;
-            return -1;
-        }
-        else if (numberOfBytesReceived == 0){
-            std::cout << "Failed to receive message because the server closed the connection" << std::endl;
-            return -1;
-        }
-        else{
-            buffer[numberOfBytesReceived] = '\0'; // Otherwise we always get the same output back
-            std::cout << "Received from server: " << '\n' << buffer << std::endl;;
-        }
-
-        std::cout << "----------------" << std::endl;
-
-        // Start new loop of receiving command, sending it and receiving something back
-        std::cout << "Enter command to send to the server: " << std::endl;
-        std::getline(std::cin, message);
-
+    // I decided to make adding SYS optional on the client side for convenience, this just adds SYS to the input string if 
+    // the user did not do so already. This should probably be removed later if the client and server will support doing something
+    // other than just send SYS commands and receive results
+    if ( message.substr(0,3) != "SYS"){
+        message = "SYS " + message;
     }
- 
+
+
+    // Here we try sending the message and handle things that could have gone wrong
+    int numberOfBytesSent = send(mySocket, message.c_str(), message.length(), 0); // last input are flags, which I don't think are necessary here
+
+    if (numberOfBytesSent == -1){
+        perror("Failed to send message");
+        return -1;
+    }
+    else if (numberOfBytesSent < message.length()){
+        std::cout << "Did not send the entire message for some reason" << std::endl;
+    }
+
+
     // Last thing to do is to explicitly close the connection after we're done
     if (close(mySocket) <0){
         perror("Failed to close socket");

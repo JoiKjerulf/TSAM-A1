@@ -168,8 +168,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   else
   {
     std::cout << "Unknown command from client:" << buffer << std::endl;
-    std::string response = "Server received: " + std::string(buffer);
-    send(clientSocket, response.c_str(), response.length(), 0);
   }
 }
 
