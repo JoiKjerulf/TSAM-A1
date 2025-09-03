@@ -145,8 +145,8 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
   FD_CLR(clientSocket, openSockets);
 }
 
-// Process any message received from client on the server
 
+// Process any message received from client on the server
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
                    char *buffer)
 {
@@ -160,7 +160,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   while (stream >> token)
     tokens.push_back(token);
 
-  // This assumes that the supplied command has no parameters
   if ((tokens.size() >= 2) && (tokens[0].compare("SYS") == 0))
   {
     // partially adapted from
@@ -179,15 +178,9 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
     while(fgets(responseBuffer, sizeof(responseBuffer), iostream) != NULL ){
       output += responseBuffer;
     }
-
     pclose(iostream);
     send(clientSocket, output.c_str(), output.length(), 0);
 
-
-    // system(buffer + 4);
-    // std::string response = "bababooey";
-    // send(clientSocket, response.c_str(), response.length(), 0);
-    // system(tokens[1].c_str());
   }
   else
   {
