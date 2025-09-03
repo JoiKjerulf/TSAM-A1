@@ -146,6 +146,63 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 }
 
 
+bool send_all(int inputSocket, const char* data, size_t len) {
+    size_t sent = 0;
+    while (sent < len) {
+        ssize_t n = send(inputSocket, data + sent, len - sent, 0);
+
+        if (n > 0){
+          sent += static_cast<size_t>(n);
+          continue; 
+        }
+        if (n == 0) {
+          return false;  // peer closed
+        }
+        if (errno == EINTR){
+          continue; // retry
+        }            
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          // If we hit one of these errors, then we're sending too fast for the receiver socket
+          // The solution here is to simply wait until the socket is writeable again and then
+          // continue writing
+
+          fd_set write_ready_socket_set;
+          FD_ZERO(&write_ready_socket_set);
+          FD_SET(inputSocket, &write_ready_socket_set);
+
+          struct timeval write_timeout_interval;
+          write_timeout_interval.tv_sec = 5;
+          write_timeout_interval.tv_usec = 0;
+
+          // Select needs the highest file descriptor that we're watching, +1 for some reason
+          // then a set of sockets that we want to know are readable, a set of sockets that we we want to 
+          // know are writeable, and then a set of sockets that we want to know if have except conditions
+          // then lastly a timeval struct that tells it the upper bound of how long to wait for
+          // In our case we just put the write_ready_socket_set, which we only have the single socket in
+          // This way it just waits until that one socket in the one set becomes writeable
+          int number_of_ready_sockets = select(inputSocket + 1, nullptr, &write_ready_socket_set, nullptr, &write_timeout_interval);
+
+          if (number_of_ready_sockets <= 0){
+            return false;  // timeout or select error
+          }
+
+          continue;
+        }
+        return false; // other error (ECONNRESET, etc.)
+    }
+    return true;
+}
+
+
+bool send_all_new(int inputSocket, const char* data, size_t len){
+  size_t sent = 0;
+  while (sent < len){
+    // size_t n = send(inputSocket, )
+  }
+  return -1;
+}
+
+
 // Process any message received from client on the server
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
                    char *buffer)
@@ -181,7 +238,19 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
       output += responseBuffer;
     }
     pclose(iostream);
-    send(clientSocket, output.c_str(), output.length(), 0);
+
+    
+    std::string header = "SIZE " + std::to_string(output.size()) + "\n";
+    if (!send_all(clientSocket, header.data(), header.size())) {
+        std::cerr << "send header failed\n";
+        return;
+    }
+    if (!send_all(clientSocket, output.data(), output.size())) {
+        std::cerr << "send body failed\n";
+        return;
+    }
+
+
 
   }
   else

@@ -124,46 +124,37 @@ int main(int argc, char const *argv[])
 
 
         //  Receive something back
-        bool messageReceived = false;
-
-        char buffer[1024];
-        std::cout << "Received from server: " << std::endl;
-
-        // The idea here is to assume that more message is on the way if we receive a full buffer, and to
-        // keep looping until we receive a not full buffer
-        while(!messageReceived){
-            int numberOfBytesReceived = recv(mySocket, buffer, sizeof(buffer), 0);
-
-            if (numberOfBytesReceived < 0){ // recv returns -1 if something went wrong
-                std::cout << "Failed to receive message" << std::endl;
-                return -1;
+        // client: read a header line "SIZE <n>\n"
+        auto read_line = [&](int fd) {
+            std::string line;
+            char ch;
+            while (true) {
+                ssize_t n = recv(fd, &ch, 1, 0);
+                if (n <= 0) { std::cerr << "connection closed while reading header\n"; exit(1); }
+                if (ch == '\n') break;
+                line.push_back(ch);
             }
-            else if (numberOfBytesReceived == 0){ // recv returns 0 if the server closed the connection
-                std::cout << "Failed to receive message because the server closed the connection" << std::endl;
-                return -1;
-            }
-            else{
+            return line;
+        };
 
-                buffer[numberOfBytesReceived] = '\0'; // Otherwise we always get the same output back
-                std::cout << buffer;
-
-                // If we received a non-full buffer, we might be done, but we need to confirm that there's no more data
-                // to be read before concluding that the message is done
-                if (numberOfBytesReceived < sizeof(buffer) -1 ){
-                    std::cout << "We got here" << std::endl;
-                    char peekBuffer[1];
-                    int peekResult = recv(mySocket, peekBuffer, sizeof(peekBuffer), MSG_PEEK | MSG_DONTWAIT);
-                    std::cout << peekResult << std::endl;
-
-                    if(peekResult <=0){ // This should be -1 if there's no more data, or 0 if the server has closed the connection
-                        messageReceived = true;
-                        std::cout << std::endl;
-                    }
-
-                }
-
-            }
+        std::string hdr = read_line(mySocket);
+        size_t bytes_to_read = 0;
+        if (sscanf(hdr.c_str(), "SIZE %zu", &bytes_to_read) != 1) {
+            std::cerr << "bad header: " << hdr << "\n"; exit(1);
         }
+
+        // now read exactly bytes_to_read and stream to stdout
+        char buf[4096];
+        size_t got = 0;
+        while (got < bytes_to_read) {
+            ssize_t n = recv(mySocket, buf, sizeof(buf), 0);
+            if (n <= 0) { std::cerr << "connection closed mid-body\n"; exit(1); }
+            if (got + size_t(n) > bytes_to_read) n = bytes_to_read - got; // cap last chunk
+            std::cout.write(buf, n);  // no '\0' needed
+            got += size_t(n);
+        }
+        std::cout << std::flush;
+
 
 
         std::cout << "----------------" << std::endl;
