@@ -166,7 +166,9 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
     // https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
 
     const char* mode = "r"; // "r" for read, "w" for write, and "r+" for both
-    FILE* iostream = popen(buffer + 4, mode);
+    std::string cmd = std::string(buffer + 4) + " 2>&1"; // If the client sends an invalid command we need the standard error output too
+  
+    FILE* iostream = popen(cmd.c_str(), mode);
     if (!iostream)
     {
         std::cerr << "Couldn't start command." << std::endl;
