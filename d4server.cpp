@@ -145,41 +145,47 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
   FD_CLR(clientSocket, openSockets);
 }
 
-
+// Helper function to send all of the output back to the client. Made specifically to 
+// be able to handle large outputs as that was a 'big' problem for a while
+// The first input is the socket file descriptor that connects to the client, 
+// the second is std::string .data() and the third is std::string .length()
 bool send_all(int inputSocket, const char* data, size_t len) {
     size_t sent = 0;
     while (sent < len) {
-        ssize_t n = send(inputSocket, data + sent, len - sent, 0);
+        ssize_t n = send(inputSocket, data + sent, len - sent, 0); // since data is a pointer to the message in the buffer, we can just increment the pointer each time
 
         if (n > 0){
-          sent += static_cast<size_t>(n);
+          sent += static_cast<size_t>(n); // n is signed so I convert to unsigned int explicitly before adding to the total
           continue; 
         }
         if (n == 0) {
           return false;  // peer closed
         }
         if (errno == EINTR){
-          continue; // retry
+          continue; // retry because this just means 'A signal interrupts the system call before any data is transmitted'
         }            
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          // If we hit one of these errors, then we're sending too fast for the receiver socket
+          // If we hit one of these errors, then we're sending too fast and 
           // The solution here is to simply wait until the socket is writeable again and then
           // continue writing
 
+          // Here we declare an fd_set, initialise it as a 0 set, and then add inputSocket to it
           fd_set write_ready_socket_set;
           FD_ZERO(&write_ready_socket_set);
           FD_SET(inputSocket, &write_ready_socket_set);
 
+          // This makes a timeval of 5 seconds and 0 microseconds
           struct timeval write_timeout_interval;
           write_timeout_interval.tv_sec = 5;
           write_timeout_interval.tv_usec = 0;
 
           // Select needs the highest file descriptor that we're watching, +1 for some reason
           // then a set of sockets that we want to know are readable, a set of sockets that we we want to 
-          // know are writeable, and then a set of sockets that we want to know if have except conditions
-          // then lastly a timeval struct that tells it the upper bound of how long to wait for
+          // know are writeable, and then a set of sockets that we want to know if have except conditions.
+          // For our purposes, we only need to point to the writeable set.
+          // Lastly a timeval struct is needed that tells it the upper bound of how long to wait for
           // In our case we just put the write_ready_socket_set, which we only have the single socket in
-          // This way it just waits until that one socket in the one set becomes writeable
+          // This way it just waits(blocks) until that one socket in the one set becomes writeable
           int number_of_ready_sockets = select(inputSocket + 1, nullptr, &write_ready_socket_set, nullptr, &write_timeout_interval);
 
           if (number_of_ready_sockets <= 0){
@@ -188,19 +194,11 @@ bool send_all(int inputSocket, const char* data, size_t len) {
 
           continue;
         }
-        return false; // other error (ECONNRESET, etc.)
+        return false; // Some other error not accounted for happened
     }
-    return true;
+    return true; // Everything is good!
 }
 
-
-bool send_all_new(int inputSocket, const char* data, size_t len){
-  size_t sent = 0;
-  while (sent < len){
-    // size_t n = send(inputSocket, )
-  }
-  return -1;
-}
 
 
 // Process any message received from client on the server
@@ -219,6 +217,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
 
   if ((tokens.size() >= 2) && (tokens[0].compare("SYS") == 0))
   {
+
     // partially adapted from
     // https://stackoverflow.com/questions/44610978/popen-writes-output-of-command-executed-to-cout
 
@@ -239,7 +238,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
     }
     pclose(iostream);
 
-    
+    // The client code is made to recognise this format of header to know how long of a message it should expect to read
     std::string header = "SIZE " + std::to_string(output.size()) + "\n";
     if (!send_all(clientSocket, header.data(), header.size())) {
         std::cerr << "send header failed\n";
@@ -249,8 +248,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
         std::cerr << "send body failed\n";
         return;
     }
-
-
 
   }
   else

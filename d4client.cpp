@@ -124,40 +124,57 @@ int main(int argc, char const *argv[])
 
 
         //  Receive something back
-        // client: read a header line "SIZE <n>\n"
-        auto read_line = [&](int fd) {
-            std::string line;
-            char ch;
-            while (true) {
-                ssize_t n = recv(fd, &ch, 1, 0);
-                if (n <= 0) { std::cerr << "connection closed while reading header\n"; exit(1); }
-                if (ch == '\n') break;
-                line.push_back(ch);
-            }
-            return line;
-        };
+        // The server is configured to send outputs from command with a preceeding header line in the format "SIZE <n>\n"
 
-        std::string hdr = read_line(mySocket);
+        // Read the header line character by character until we hit a newline
+        std::string header;
+        char single_char;
+        while (true) {
+            if (recv(mySocket, &single_char, 1, 0) <= 0) {
+                std::cerr << "Failed to read header - connection closed\n";
+                return -1;
+            }
+            
+            if (single_char == '\n')
+                break;
+                
+            header += single_char;
+        }
+
+        // Parse the SIZE value from the header. This sscanf pattern matching if statement was generated with an AI tool
+        // according to man sscanf, %zu means there's a variable to extract, it's of type size_t, and it's an optionally signed decimal integer
+        // which is what we want as we need to extract the number of bytes intended.
         size_t bytes_to_read = 0;
-        if (sscanf(hdr.c_str(), "SIZE %zu", &bytes_to_read) != 1) {
-            std::cerr << "bad header: " << hdr << "\n"; exit(1);
+        if (sscanf(header.c_str(), "SIZE %zu", &bytes_to_read) != 1) {
+            std::cerr << "Invalid header format: " << header << "\n";
+            return -1;
+        }
+
+        if(bytes_to_read >= 1){
+            std::cout << "------- Received from server: --------" << std::endl;
         }
 
         // now read exactly bytes_to_read and stream to stdout
-        char buf[4096];
-        size_t got = 0;
-        while (got < bytes_to_read) {
-            ssize_t n = recv(mySocket, buf, sizeof(buf), 0);
-            if (n <= 0) { std::cerr << "connection closed mid-body\n"; exit(1); }
-            if (got + size_t(n) > bytes_to_read) n = bytes_to_read - got; // cap last chunk
-            std::cout.write(buf, n);  // no '\0' needed
-            got += size_t(n);
+        char buffer[1024]; 
+        size_t totalReceivedBytes = 0;
+        while (totalReceivedBytes < bytes_to_read) {
+
+            int numberOfBytesReceived = recv(mySocket, buffer, sizeof(buffer), 0);
+            if (numberOfBytesReceived < 0){
+                std::cout << "Failed to receive message" << std::endl;
+                return -1;
+            }
+            else if (numberOfBytesReceived == 0){
+                std::cout << "Failed to receive message because the server closed the connection" << std::endl;
+                return -1;
+            }
+            else{
+                totalReceivedBytes += numberOfBytesReceived;
+                std::cout.write(buffer, numberOfBytesReceived); // Doing this with .write() prevents duplicate buffer printing
+            }
         }
-        std::cout << std::flush;
 
-
-
-        std::cout << "----------------" << std::endl;
+        std::cout << "--------------------------------------" << std::endl;
 
         // Start new loop of receiving command, sending it and receiving something back
         std::cout << "Enter command to send to the server: " << std::endl;
