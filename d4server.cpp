@@ -166,9 +166,8 @@ bool send_all(int inputSocket, const char* data, size_t len) {
         }            
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           // If we hit one of these errors, then we're sending too fast and 
-          // The solution here is to simply wait until the socket is writeable again and then
-          // continue writing
-
+          // The solution here is to simply wait until the socket is writeable again and then continue writing
+          
           // Here we declare an fd_set, initialise it as a 0 set, and then add inputSocket to it
           fd_set write_ready_socket_set;
           FD_ZERO(&write_ready_socket_set);

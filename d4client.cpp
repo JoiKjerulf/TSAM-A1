@@ -93,14 +93,11 @@ int main(int argc, char const *argv[])
     // Here we start message handling to send to the server. I use std::getLine to get the entire line entered by 
     // the user since later we will add support for options and flags. This also allows the user to enter
     // either SYS <command> or just <command>
-
-
-
     std::cout << "Enter command to send to the server: " << std::endl;
     std::string message;
     std::getline(std::cin, message);
 
-    while(message != "quit"){
+    while(message != "quit" && message != "q"){
 
 
         // I decided to make adding SYS optional on the client side for convenience, this just adds SYS to the input string if 
