@@ -141,9 +141,9 @@ int main(int argc, char const *argv[])
             header += single_char;
         }
 
-        // Parse the SIZE value from the header. This sscanf pattern matching if statement was generated with an AI tool
-        // according to man sscanf, %zu means there's a variable to extract, it's of type size_t, and it's an optionally signed decimal integer
-        // which is what we want as we need to extract the number of bytes intended.
+        // Parse the SIZE value from the header. This sscanf pattern matching if statement was generated with an AI tool and then checked for correctness
+        // According to man sscanf, %zu means there's a variable to extract, it's of type size_t, and it's an optionally signed decimal integer
+        // which is what we want as we need to extract the number of bytes intended to be sent.
         size_t bytes_to_read = 0;
         if (sscanf(header.c_str(), "SIZE %zu", &bytes_to_read) != 1) {
             std::cerr << "Invalid header format: " << header << "\n";

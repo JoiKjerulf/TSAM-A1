@@ -224,13 +224,15 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
     const char* mode = "r"; // "r" for read, "w" for write, and "r+" for both
     std::string cmd = std::string(buffer + 4) + " 2>&1"; // If the client sends an invalid command we need the standard error output too
   
+    // popen runs the command and gives us a stream of the output
     FILE* iostream = popen(cmd.c_str(), mode);
     if (!iostream)
     {
         std::cerr << "Couldn't start command." << std::endl;
         exit(-1);
     }
-
+    // Here we read the output from the stream one buffer size at a time and add it to an output string
+    // This we can then put into our send_all command
     char responseBuffer[1024];
     std::string output;
     while(fgets(responseBuffer, sizeof(responseBuffer), iostream) != NULL ){
@@ -244,6 +246,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
         std::cerr << "send header failed\n";
         return;
     }
+    // If header was sent successfully, send body
     if (!send_all(clientSocket, output.data(), output.size())) {
         std::cerr << "send body failed\n";
         return;
