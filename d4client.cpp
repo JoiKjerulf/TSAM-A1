@@ -174,7 +174,7 @@ int main(int argc, char const *argv[])
             }
         }
 
-        std::cout << "--------------------------------------" << std::endl;
+        std::cout << '\n' << "--------------------------------------" << std::endl;
 
         // Start new loop of receiving command, sending it and receiving something back
         std::cout << "Enter command to send to the server: " << std::endl;
